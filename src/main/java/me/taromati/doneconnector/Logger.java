@@ -9,4 +9,10 @@ public class Logger {
     public static void info(String msg) {
         Bukkit.getConsoleSender().sendMessage(prefix + msg);
     }
+
+    public static void say(String msg) {
+        String command = "say " + msg;
+        Bukkit.getScheduler()
+                .callSyncMethod(DoneConnector.plugin, () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command));
+    }
 }

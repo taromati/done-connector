@@ -15,8 +15,10 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.util.*;
 
 public final class DoneConnector extends JavaPlugin implements Listener {
-    public static boolean debug;
     public static Plugin plugin;
+
+    public static boolean debug;
+    public static boolean random;
 
     private static final List<Map<String, String>> chzzkUserList = new ArrayList<>();
     private static final HashMap<Integer, List<String>> donationRewards = new HashMap<>();
@@ -59,10 +61,19 @@ public final class DoneConnector extends JavaPlugin implements Listener {
         Logger.info(ChatColor.GREEN + "플러그인 비활성화 완료.");
     }
 
+    private void clearConfig() {
+        debug = false;
+        random = false;
+        chzzkUserList.clear();
+        donationRewards.clear();
+        reloadConfig();
+    }
+
     private void loadConfig() throws DoneException {
         this.saveResource("config.yml", false);
         try {
             debug = this.getConfig().getBoolean("디버그");
+            random = this.getConfig().getBoolean("랜덤 보상");
         } catch (Exception e) {
             throw new DoneException(ExceptionCode.CONFIG_LOAD_ERROR);
         }
@@ -156,14 +167,22 @@ public final class DoneConnector extends JavaPlugin implements Listener {
         } else {
             try {
                 if (args[0].equalsIgnoreCase("on")) {
-                    Logger.info(ChatColor.GREEN + "후원 기능을 활성화 합니다.");
+                    Logger.info(ChatColor.YELLOW + "후원 기능을 활성화 합니다.");
                     connectChzzk(chzzkUserList);
                 } else if (args[0].equalsIgnoreCase("off")) {
                     Logger.info(ChatColor.YELLOW + "후원 기능을 비활성화 합니다.");
                     disconnectChzzk(chzzkWebSocketList);
                 } else if (args[0].equalsIgnoreCase("reconnect")) {
                     Logger.info(ChatColor.YELLOW + "후원 기능을 재접속합니다.");
+                    Logger.say(ChatColor.YELLOW + "후원 기능을 재접속합니다.");
                     disconnectChzzk(chzzkWebSocketList);
+                    connectChzzk(chzzkUserList);
+                } else if (args[0].equalsIgnoreCase("reload")) {
+                    Logger.info(ChatColor.YELLOW + "후원 설정을 다시 불러옵니다.");
+                    Logger.say(ChatColor.YELLOW + "후원 설정을 다시 불러옵니다.");
+                    disconnectChzzk(chzzkWebSocketList);
+                    clearConfig();
+                    loadConfig();
                     connectChzzk(chzzkUserList);
                 } else {
                     return false;
@@ -181,7 +200,7 @@ public final class DoneConnector extends JavaPlugin implements Listener {
         if (sender.isOp() == false) {
             return Collections.emptyList();
         } else if (args.length == 1) {
-            List<String> commandList = new ArrayList<>(Arrays.asList("on", "off", "reconnect"));
+            List<String> commandList = new ArrayList<>(Arrays.asList("on", "off", "reconnect", "reload"));
 
             if (args[0].isEmpty()) {
                 return commandList;

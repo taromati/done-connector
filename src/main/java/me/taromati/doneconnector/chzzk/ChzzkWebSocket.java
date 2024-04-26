@@ -11,10 +11,7 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
 import java.net.URI;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public class ChzzkWebSocket extends WebSocketClient {
     private final String chatChannelId;
@@ -112,26 +109,32 @@ public class ChzzkWebSocket extends WebSocketClient {
             int payAmount = Integer.parseInt(extraObject.get("payAmount").toString());
 
             Logger.info(ChatColor.YELLOW + nickname + ChatColor.WHITE + "님께서 " + ChatColor.GREEN + payAmount + "원" + ChatColor.WHITE + "을 후원해주셨습니다.");
+
+            List<String> commands = null;
             if (donationRewards.containsKey(payAmount)) {
-
-                List<String> commands = donationRewards.get(payAmount);
-
-                for (String command : commands) {
-                    String tempCommand = command;
-                    tempCommand = tempCommand.replaceAll("%tag%", chzzkUser.get("tag"));
-                    tempCommand = tempCommand.replaceAll("%name%", nickname);
-                    tempCommand = tempCommand.replaceAll("%amount%", String.valueOf(payAmount));
-                    tempCommand = tempCommand.replaceAll("%message%", msg);
-                    String finalCommand = tempCommand;
-                    Bukkit.getScheduler()
-                            .callSyncMethod(DoneConnector.plugin, () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand));
-                }
+                commands = donationRewards.get(payAmount);
             } else {
-                List<String> commands = donationRewards.get(0);
-                if (commands == null) {
-                    return;
-                }
+                commands = donationRewards.get(0);
+            }
 
+            if (commands == null) {
+                return;
+            }
+
+            if (DoneConnector.random) {
+                Random rand = new Random();
+                int randomIndex = rand.nextInt(commands.size());
+                String command = commands.get(randomIndex);
+
+                String tempCommand = command;
+                tempCommand = tempCommand.replaceAll("%tag%", chzzkUser.get("tag"));
+                tempCommand = tempCommand.replaceAll("%name%", nickname);
+                tempCommand = tempCommand.replaceAll("%amount%", String.valueOf(payAmount));
+                tempCommand = tempCommand.replaceAll("%message%", msg);
+                String finalCommand = tempCommand;
+                Bukkit.getScheduler()
+                        .callSyncMethod(DoneConnector.plugin, () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand));
+            } else {
                 for (String command : commands) {
                     String tempCommand = command;
                     tempCommand = tempCommand.replaceAll("%tag%", chzzkUser.get("tag"));
@@ -143,6 +146,7 @@ public class ChzzkWebSocket extends WebSocketClient {
                             .callSyncMethod(DoneConnector.plugin, () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand));
                 }
             }
+
         } catch (Exception e) {
             Logger.info(ChatColor.RED + "치지직 메시지 파싱 중 오류가 발생했습니다.");
             Logger.info(ChatColor.LIGHT_PURPLE + e.getMessage());

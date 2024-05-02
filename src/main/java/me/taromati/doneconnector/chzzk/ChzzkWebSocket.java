@@ -34,6 +34,7 @@ public class ChzzkWebSocket extends WebSocketClient {
 
     public ChzzkWebSocket(String serverUri, String chatChannelId, String accessToken, String extraToken, Map<String, String> chzzkUser, HashMap<Integer, List<String>> donationRewards) {
         super(URI.create(serverUri));
+        this.setConnectionLostTimeout(0);
 
         this.chatChannelId = chatChannelId;
         this.accessToken = accessToken;

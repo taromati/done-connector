@@ -1,4 +1,4 @@
-# Minecraft Chzzk 후원 연동 플러그인
+# Minecraft Chzzk / AfreecaTV 후원 연동 플러그인
 
 
 ## **빌드 방법**
@@ -16,4 +16,4 @@
 ## **사용 방법**
 
 * 플러그인 적용 후 서버 실행시 자동으로 기능 활성화
-* `/done [on|off|reconnect]` 명령어로 기능 제어
+* `/done [on|off|reconnect|reload]` 명령어로 기능 제어

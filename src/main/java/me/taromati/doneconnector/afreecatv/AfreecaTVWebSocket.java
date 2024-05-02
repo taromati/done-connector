@@ -58,7 +58,7 @@ public class AfreecaTVWebSocket extends WebSocketClient {
 
     @Override
     public void onOpen(ServerHandshake handshakedata) {
-        Logger.info(ChatColor.GREEN + "아프리카 웹소켓 연결이 연결되었습니다.");
+        Logger.info(ChatColor.GREEN + "[AfreecaTVWebsocket][" + afreecaTVUser.get("nickname") + "] 아프리카 웹소켓 연결이 연결되었습니다.");
 
         isAlive = true;
 
@@ -184,14 +184,14 @@ public class AfreecaTVWebSocket extends WebSocketClient {
             }
 
         } catch (Exception e) {
-            Logger.info(ChatColor.RED + "아프리카 메시지 파싱 중 오류가 발생했습니다.");
+            Logger.info(ChatColor.RED + "[AfreecaTVWebsocket][" + afreecaTVUser.get("nickname") + "] 아프리카 메시지 파싱 중 오류가 발생했습니다.");
 //            Logger.info(ChatColor.LIGHT_PURPLE + e.getMessage());
         }
     }
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        Logger.info(ChatColor.RED + "아프리카 웹소켓 연결이 끊겼습니다.");
+        Logger.info(ChatColor.RED + "[AfreecaTVWebsocket][" + afreecaTVUser.get("nickname") + "] 아프리카 웹소켓 연결이 끊겼습니다.");
 
         isAlive = false;
 

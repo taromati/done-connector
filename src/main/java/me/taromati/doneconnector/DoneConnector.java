@@ -1,5 +1,8 @@
 package me.taromati.doneconnector;
 
+import me.taromati.doneconnector.afreecatv.AfreecaTVApi;
+import me.taromati.doneconnector.afreecatv.AfreecaTVLiveInfo;
+import me.taromati.doneconnector.afreecatv.AfreecaTVWebSocket;
 import me.taromati.doneconnector.chzzk.ChzzkApi;
 import me.taromati.doneconnector.chzzk.ChzzkWebSocket;
 import me.taromati.doneconnector.exception.DoneException;
@@ -21,8 +24,10 @@ public final class DoneConnector extends JavaPlugin implements Listener {
     public static boolean random;
 
     private static final List<Map<String, String>> chzzkUserList = new ArrayList<>();
+    private static final List<Map<String, String>> afreecaTVUserList = new ArrayList<>();
     private static final HashMap<Integer, List<String>> donationRewards = new HashMap<>();
     List<ChzzkWebSocket> chzzkWebSocketList = new ArrayList<>();
+    List<AfreecaTVWebSocket> afreecaTVWebSocketList = new ArrayList<>();
 
     @Override
     public void onEnable() {
@@ -48,6 +53,14 @@ public final class DoneConnector extends JavaPlugin implements Listener {
             Bukkit.getPluginManager().disablePlugin(this);
             return;
         }
+
+        try {
+            connectAfreecaTV(afreecaTVUserList);
+        } catch (InterruptedException e) {
+            Logger.info(ChatColor.RED + "아프리카TV 채팅에 연결 중 오류가 발생했습니다.");
+            Bukkit.getPluginManager().disablePlugin(this);
+            return;
+        }
         Logger.info(ChatColor.GREEN + "플러그인 활성화 완료.");
     }
 
@@ -65,6 +78,7 @@ public final class DoneConnector extends JavaPlugin implements Listener {
         debug = false;
         random = false;
         chzzkUserList.clear();
+        afreecaTVUserList.clear();
         donationRewards.clear();
         reloadConfig();
     }
@@ -99,22 +113,58 @@ public final class DoneConnector extends JavaPlugin implements Listener {
                     throw new DoneException(ExceptionCode.ID_NOT_FOUND);
                 }
 
-                Map<String, String> chzzkUser = new HashMap();
-                chzzkUser.put("nickname", nickname);
-                chzzkUser.put("id", id);
-                chzzkUser.put("tag", tag);
-                chzzkUserList.add(chzzkUser);
+                Map<String, String> userMap = new HashMap();
+                userMap.put("nickname", nickname);
+                userMap.put("id", id);
+                userMap.put("tag", tag);
+                chzzkUserList.add(userMap);
                 if(debug) {
-                    Logger.info(ChatColor.WHITE + "치지직 유저: " + chzzkUser.toString());
+                    Logger.info(ChatColor.WHITE + "치지직 유저: " + userMap.toString());
                 }
             }
         } catch (Exception e) {
             throw new DoneException(ExceptionCode.ID_NOT_FOUND);
         }
-        if (chzzkUserList.isEmpty()) {
+        Logger.info(ChatColor.GREEN + "치지직 아이디 " + chzzkUserList.size() + "개 로드 완료.");
+
+        try {
+            if (debug) {
+                Logger.info(ChatColor.WHITE + "아프리카 아이디 로드 중...");
+                Logger.info(this.getConfig().getConfigurationSection("아프리카").getKeys(false).toString());
+            }
+            for (String nickname : this.getConfig().getConfigurationSection("아프리카").getKeys(false)) {
+                if (debug) {
+                    Logger.info(ChatColor.WHITE + "아프리카 닉네임: " + nickname);
+                }
+                String id = this.getConfig().getString("아프리카." + nickname + ".식별자");
+                if (debug) {
+                    Logger.info(ChatColor.WHITE + "아프리카 아이디: " + id);
+                }
+                String tag = this.getConfig().getString("아프리카." + nickname + ".마크닉네임");
+                if (debug) {
+                    Logger.info(ChatColor.WHITE + "아프리카 마크닉네임: " + tag);
+                }
+                if (id == null || tag == null) {
+                    throw new DoneException(ExceptionCode.ID_NOT_FOUND);
+                }
+
+                Map<String, String> userMap = new HashMap();
+                userMap.put("nickname", nickname);
+                userMap.put("id", id);
+                userMap.put("tag", tag);
+                afreecaTVUserList.add(userMap);
+                if(debug) {
+                    Logger.info(ChatColor.WHITE + "아프리카 유저: " + userMap.toString());
+                }
+            }
+        } catch (Exception e) {
             throw new DoneException(ExceptionCode.ID_NOT_FOUND);
         }
-        Logger.info(ChatColor.GREEN + "치지직 아이디 " + chzzkUserList.size() + "개 로드 완료.");
+        Logger.info(ChatColor.GREEN + "아프리카 아이디 " + afreecaTVUserList.size() + "개 로드 완료.");
+
+        if (chzzkUserList.isEmpty() && afreecaTVUserList.isEmpty()) {
+            throw new DoneException(ExceptionCode.ID_NOT_FOUND);
+        }
 
         try {
             for (String price : this.getConfig().getConfigurationSection("후원 보상").getKeys(false)) {
@@ -156,6 +206,23 @@ public final class DoneConnector extends JavaPlugin implements Listener {
         chzzkWebSocketList.clear();
     }
 
+    private void connectAfreecaTV(List<Map<String, String>> afreecaTVUserList) throws InterruptedException {
+        for (Map<String, String> afreecaTVUser : afreecaTVUserList) {
+            String afreecaTVId = afreecaTVUser.get("id");
+            AfreecaTVLiveInfo liveInfo = AfreecaTVApi.getPlayerLive(afreecaTVId);
+            AfreecaTVWebSocket webSocket = new AfreecaTVWebSocket("wss://" + liveInfo.CHDOMAIN() + ":" + liveInfo.CHPT() + "/Websocket/" + liveInfo.BJID(), liveInfo, afreecaTVUser, donationRewards);
+            webSocket.connectBlocking();
+            afreecaTVWebSocketList.add(webSocket);
+        }
+    }
+
+    private void disconnectAfreecaTV(List<AfreecaTVWebSocket> afreecaTVWebSocketList) throws InterruptedException {
+        for (AfreecaTVWebSocket webSocket : afreecaTVWebSocketList) {
+            webSocket.closeBlocking();
+        }
+        afreecaTVWebSocketList.clear();
+    }
+
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (label.equalsIgnoreCase("done") == false) {
             return true;
@@ -169,21 +236,27 @@ public final class DoneConnector extends JavaPlugin implements Listener {
                 if (args[0].equalsIgnoreCase("on")) {
                     Logger.info(ChatColor.YELLOW + "후원 기능을 활성화 합니다.");
                     connectChzzk(chzzkUserList);
+                    connectAfreecaTV(afreecaTVUserList);
                 } else if (args[0].equalsIgnoreCase("off")) {
                     Logger.info(ChatColor.YELLOW + "후원 기능을 비활성화 합니다.");
                     disconnectChzzk(chzzkWebSocketList);
+                    disconnectAfreecaTV(afreecaTVWebSocketList);
                 } else if (args[0].equalsIgnoreCase("reconnect")) {
                     Logger.info(ChatColor.YELLOW + "후원 기능을 재접속합니다.");
                     Logger.say(ChatColor.YELLOW + "후원 기능을 재접속합니다.");
                     disconnectChzzk(chzzkWebSocketList);
                     connectChzzk(chzzkUserList);
+                    disconnectAfreecaTV(afreecaTVWebSocketList);
+                    connectAfreecaTV(afreecaTVUserList);
                 } else if (args[0].equalsIgnoreCase("reload")) {
                     Logger.info(ChatColor.YELLOW + "후원 설정을 다시 불러옵니다.");
                     Logger.say(ChatColor.YELLOW + "후원 설정을 다시 불러옵니다.");
                     disconnectChzzk(chzzkWebSocketList);
+                    disconnectAfreecaTV(afreecaTVWebSocketList);
                     clearConfig();
                     loadConfig();
                     connectChzzk(chzzkUserList);
+                    connectAfreecaTV(afreecaTVUserList);
                 } else {
                     return false;
                 }

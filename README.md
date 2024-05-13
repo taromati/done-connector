@@ -6,7 +6,7 @@
 1. 터미널에서 `gradlew jar` 실행
 
 ## **다운로드 방법**
-1. Github(https://github.com/taromati/done-connector) 의 Release 에서 [다운로드](https://github.com/taromati/done-connector/releases/download/1.2.0/done-connector-1.2.0.jar)
+1. Github(https://github.com/taromati/done-connector) 의 Release 에서 [다운로드](https://github.com/taromati/done-connector/releases/download/1.3.0/done-connector-1.3.0.jar)
 
 ## **실행 방법**
 

@@ -12,6 +12,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 
 public class AfreecaTVWebSocket extends WebSocketClient {
@@ -161,31 +162,34 @@ public class AfreecaTVWebSocket extends WebSocketClient {
                 Random rand = new Random();
                 int randomIndex = rand.nextInt(commands.size());
                 String command = commands.get(randomIndex);
-
-                String tempCommand = command;
-                tempCommand = tempCommand.replaceAll("%tag%", afreecaTVUser.get("tag"));
-                tempCommand = tempCommand.replaceAll("%name%", nickname);
-                tempCommand = tempCommand.replaceAll("%amount%", String.valueOf(payAmount));
-                tempCommand = tempCommand.replaceAll("%message%", msg);
-                String finalCommand = tempCommand;
-                Bukkit.getScheduler()
-                        .callSyncMethod(DoneConnector.plugin, () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand));
+                call(afreecaTVUser.get("tag"), nickname, payAmount, msg, command);
             } else {
                 for (String command : commands) {
-                    String tempCommand = command;
-                    tempCommand = tempCommand.replaceAll("%tag%", afreecaTVUser.get("tag"));
-                    tempCommand = tempCommand.replaceAll("%name%", nickname);
-                    tempCommand = tempCommand.replaceAll("%amount%", String.valueOf(payAmount));
-                    tempCommand = tempCommand.replaceAll("%message%", msg);
-                    String finalCommand = tempCommand;
-                    Bukkit.getScheduler()
-                            .callSyncMethod(DoneConnector.plugin, () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand));
+                    call(afreecaTVUser.get("tag"), nickname, payAmount, msg, command);
                 }
             }
 
         } catch (Exception e) {
             Logger.info(ChatColor.RED + "[AfreecaTVWebsocket][" + afreecaTVUser.get("nickname") + "] 아프리카 메시지 파싱 중 오류가 발생했습니다.");
 //            Logger.info(ChatColor.LIGHT_PURPLE + e.getMessage());
+        }
+    }
+
+    private void call(String tag, String nickname, int payAmount, String msg, String command) {
+        String [] commandArray = command.split(";");
+        for (String cmd : commandArray) {
+            String tempCommand = cmd;
+            tempCommand = tempCommand.replaceAll("%tag%", tag);
+            tempCommand = tempCommand.replaceAll("%name%", nickname);
+            tempCommand = tempCommand.replaceAll("%amount%", String.valueOf(payAmount));
+            tempCommand = tempCommand.replaceAll("%message%", msg);
+            String finalCommand = tempCommand;
+            try {
+                Bukkit.getScheduler()
+                        .callSyncMethod(DoneConnector.plugin, () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand)).get();
+            } catch (InterruptedException | ExecutionException e) {
+                Logger.info(ChatColor.RED + e.getMessage());
+            }
         }
     }
 

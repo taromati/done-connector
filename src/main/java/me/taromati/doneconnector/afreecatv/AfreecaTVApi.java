@@ -17,7 +17,8 @@ public class AfreecaTVApi {
     public static AfreecaTVLiveInfo getPlayerLive(String bjid) {
         String requestURL = "https://live.afreecatv.com/afreeca/player_live_api.php?bjid=" + bjid;
 
-        try (HttpClient client = HttpClient.newHttpClient()) {
+        try {
+            HttpClient client = HttpClient.newHttpClient();
             JSONObject bodyJson = new JSONObject();
             bodyJson.put("bid", bjid);
 //            bodyJson.put("bno", "264764410");

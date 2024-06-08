@@ -131,7 +131,7 @@ public class AfreecaTVWebSocket extends WebSocketClient {
                 if (packetMap.containsKey(nick)) {
                     AfreecaTVPacket donePacket = packetMap.get(nick);
                     packetMap.remove(nick);
-                    msg = dataList.getFirst();
+                    msg = dataList.get(0);
                     nickname = donePacket.getDataList().get(2);
                     payAmount = Integer.parseInt(donePacket.getDataList().get(3)) * 100;
                 } else {

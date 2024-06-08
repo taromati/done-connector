@@ -14,7 +14,8 @@ public class ChzzkApi {
     public static String getChatChannelId(String id) {
         String requestURL = "https://api.chzzk.naver.com/polling/v2/channels/" + id + "/live-status";
 
-        try (HttpClient client = HttpClient.newHttpClient()) {
+        try {
+            HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .method("GET", HttpRequest.BodyPublishers.noBody())
                     .uri(URI.create(requestURL))
@@ -39,7 +40,8 @@ public class ChzzkApi {
     public static String getAccessToken(String chatChannelId) {
         String requestURL = "https://comm-api.game.naver.com/nng_main/v1/chats/access-token?channelId=" + chatChannelId + "&chatType=STREAMING";
 
-        try (HttpClient client = HttpClient.newHttpClient()) {
+        try {
+            HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder()
                     .method("GET", HttpRequest.BodyPublishers.noBody())
                     .uri(URI.create(requestURL))

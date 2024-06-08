@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'me.taromati'
-version = '1.4.0'
+version = '1.5.0'
 
 repositories {
     mavenCentral()
@@ -30,7 +30,7 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok:1.18.32")
 }
 
-def targetJavaVersion = 21
+def targetJavaVersion = 17
 java {
     def javaVersion = JavaVersion.toVersion(targetJavaVersion)
     sourceCompatibility = javaVersion

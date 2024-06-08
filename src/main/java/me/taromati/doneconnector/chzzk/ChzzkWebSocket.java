@@ -128,7 +128,7 @@ public class ChzzkWebSocket extends WebSocketClient {
                 return;
             }
 
-            JSONObject bdyObject = (JSONObject) ((JSONArray) messageObject.get("bdy")).getFirst();
+            JSONObject bdyObject = (JSONObject) ((JSONArray) messageObject.get("bdy")).get(0);
             String uid = (String) bdyObject.get("uid");
             String msg = (String) bdyObject.get("msg");
             String nickname = "익명";

@@ -17,7 +17,7 @@ public class AfreecaTVPacket {
 
     public AfreecaTVPacket(String[] args) {
         this.dataList = new ArrayList<>(Arrays.asList(args));
-        String cmd = dataList.removeFirst();
+        String cmd = dataList.remove(0);
         this.command = cmd.substring(0, 4);
     }
 

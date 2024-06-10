@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'me.taromati'
-version = '1.5.0'
+version = '1.6.0'
 
 repositories {
     mavenCentral()
@@ -30,12 +30,14 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok:1.18.32")
 }
 
+def sourceJavaVersion = 21
 def targetJavaVersion = 17
 java {
-    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
-    sourceCompatibility = javaVersion
-    targetCompatibility = javaVersion
-    if (JavaVersion.current() < javaVersion) {
+    def sourceVersion = JavaVersion.toVersion(sourceJavaVersion)
+    sourceCompatibility = sourceVersion
+    def targetVersion = JavaVersion.toVersion(targetJavaVersion)
+    targetCompatibility = targetVersion
+    if (JavaVersion.current() < targetVersion) {
         toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
     }
 }

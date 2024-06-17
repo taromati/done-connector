@@ -14,6 +14,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.java_websocket.drafts.Draft_6455;
+import org.java_websocket.protocols.Protocol;
 
 import java.util.*;
 
@@ -195,7 +197,7 @@ public final class DoneConnector extends JavaPlugin implements Listener {
                 }
 
                 ChzzkWebSocket webSocket = new ChzzkWebSocket("wss://kr-ss1.chat.naver.com/chat", chatChannelId, accessToken, extraToken, chzzkUser, donationRewards);
-                webSocket.connectBlocking();
+                webSocket.connect();
                 chzzkWebSocketList.add(webSocket);
             } catch (Exception e) {
                 Logger.info(ChatColor.RED + "[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 치지직 채팅에 연결 중 오류가 발생했습니다.");
@@ -208,7 +210,7 @@ public final class DoneConnector extends JavaPlugin implements Listener {
 
     private void disconnectChzzk(List<ChzzkWebSocket> chzzkWebSocketList) throws InterruptedException {
         for (ChzzkWebSocket webSocket : chzzkWebSocketList) {
-            webSocket.closeBlocking();
+            webSocket.close();
         }
         chzzkWebSocketList.clear();
     }
@@ -218,8 +220,12 @@ public final class DoneConnector extends JavaPlugin implements Listener {
             String afreecaTVId = afreecaTVUser.get("id");
             try {
                 AfreecaTVLiveInfo liveInfo = AfreecaTVApi.getPlayerLive(afreecaTVId);
-                AfreecaTVWebSocket webSocket = new AfreecaTVWebSocket("wss://" + liveInfo.CHDOMAIN() + ":" + liveInfo.CHPT() + "/Websocket/" + liveInfo.BJID(), liveInfo, afreecaTVUser, donationRewards);
-                webSocket.connectBlocking();
+                Draft_6455 draft6455 = new Draft_6455(
+                        Collections.emptyList(),
+                        Collections.singletonList(new Protocol("chat"))
+                );
+                AfreecaTVWebSocket webSocket = new AfreecaTVWebSocket("wss://" + liveInfo.CHDOMAIN() + ":" + liveInfo.CHPT() + "/Websocket/" + liveInfo.BJID(), draft6455, liveInfo, afreecaTVUser, donationRewards);
+                webSocket.connect();
                 afreecaTVWebSocketList.add(webSocket);
             } catch (Exception e) {
                 Logger.info(ChatColor.RED + "[AfreecaTVWebsocket][" + afreecaTVUser.get("nickname") + "] 아프리카TV 채팅에 연결 중 오류가 발생했습니다.");
@@ -232,7 +238,7 @@ public final class DoneConnector extends JavaPlugin implements Listener {
 
     private void disconnectAfreecaTV(List<AfreecaTVWebSocket> afreecaTVWebSocketList) throws InterruptedException {
         for (AfreecaTVWebSocket webSocket : afreecaTVWebSocketList) {
-            webSocket.closeBlocking();
+            webSocket.close();
         }
         afreecaTVWebSocketList.clear();
     }

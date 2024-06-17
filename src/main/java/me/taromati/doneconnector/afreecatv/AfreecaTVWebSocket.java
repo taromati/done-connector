@@ -4,7 +4,9 @@ import me.taromati.doneconnector.DoneConnector;
 import me.taromati.doneconnector.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import me.taromati.doneconnector.SSLUtils;
 import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.drafts.Draft_6455;
 import org.java_websocket.handshake.ServerHandshake;
 
 import java.net.URI;
@@ -48,9 +50,10 @@ public class AfreecaTVWebSocket extends WebSocketClient {
 
     private Map<String, AfreecaTVPacket> packetMap = new HashMap<>();
 
-    public AfreecaTVWebSocket(String serverUri, AfreecaTVLiveInfo liveInfo, Map<String, String> afreecaTVUser, HashMap<Integer, List<String>> donationRewards) {
-        super(URI.create(serverUri));
+    public AfreecaTVWebSocket(String serverUri, Draft_6455 draft6455, AfreecaTVLiveInfo liveInfo, Map<String, String> afreecaTVUser, HashMap<Integer, List<String>> donationRewards) {
+        super(URI.create(serverUri), draft6455);
         this.setConnectionLostTimeout(0);
+        this.setSocketFactory(SSLUtils.createSSLSocketFactory());
 
         this.liveInfo = liveInfo;
         this.afreecaTVUser = afreecaTVUser;
@@ -81,7 +84,7 @@ public class AfreecaTVWebSocket extends WebSocketClient {
                         }
                     }
                 } catch (InterruptedException ignore) {
-//                    Logger.info(ChatColor.RED + "아프리카 웹소켓 핑 스레드가 종료되었습니다.");
+                    Logger.info(ChatColor.RED + "아프리카 웹소켓 핑 스레드가 종료되었습니다.");
                 }
             }
         });
@@ -171,7 +174,7 @@ public class AfreecaTVWebSocket extends WebSocketClient {
 
         } catch (Exception e) {
             Logger.info(ChatColor.RED + "[AfreecaTVWebsocket][" + afreecaTVUser.get("nickname") + "] 아프리카 메시지 파싱 중 오류가 발생했습니다.");
-//            Logger.info(ChatColor.LIGHT_PURPLE + e.getMessage());
+            Logger.info(ChatColor.LIGHT_PURPLE + e.getMessage());
         }
     }
 

@@ -1,7 +1,7 @@
 name: done-connector
 version: '${version}'
 main: me.taromati.doneconnector.DoneConnector
-api-version: '1.20'
+api-version: '1.18'
 commands:
   done:
     description: 후원 기능 상태를 변경.

@@ -1,5 +1,6 @@
 package me.taromati.doneconnector.chzzk;
 
+import lombok.Getter;
 import me.taromati.doneconnector.DoneConnector;
 import me.taromati.doneconnector.Logger;
 import me.taromati.doneconnector.afreecatv.AfreecaTVPacket;
@@ -21,6 +22,7 @@ public class ChzzkWebSocket extends WebSocketClient {
     private final String chatChannelId;
     private final String accessToken;
     private final String extraToken;
+    @Getter
     private final Map<String, String> chzzkUser;
     private final HashMap<Integer, List<String>> donationRewards;
 

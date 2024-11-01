@@ -1,5 +1,6 @@
 package me.taromati.doneconnector.afreecatv;
 
+import lombok.Getter;
 import me.taromati.doneconnector.DoneConnector;
 import me.taromati.doneconnector.Logger;
 import org.bukkit.Bukkit;
@@ -19,6 +20,7 @@ import java.util.concurrent.ExecutionException;
 
 public class AfreecaTVWebSocket extends WebSocketClient {
     private final AfreecaTVLiveInfo liveInfo;
+    @Getter
     private final Map<String, String> afreecaTVUser;
     private final Map<Integer, List<String>> donationRewards;
 

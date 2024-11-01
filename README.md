@@ -16,7 +16,7 @@ Java 버전: 21 이상
 
 ## **실행 방법**
 
-1. plugins 폴더에 done-connector-1.7.3.jar 파일을 넣고 마인크래프트 서버를 1회 실행 후 종료
+1. plugins 폴더에 done-connector-1.8.0.jar 파일을 넣고 마인크래프트 서버를 1회 실행 후 종료
 2. plugins 폴더에서 done-connector/config.yml 파일 수정
 3. 마인크래프트 서버 실행
 

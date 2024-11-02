@@ -1,4 +1,4 @@
-# Minecraft Chzzk / AfreecaTV 후원 연동 플러그인
+# Minecraft Chzzk / Soop 후원 연동 플러그인
 
 ## **지원 버전**
 Java 버전: 21 이상
@@ -28,5 +28,5 @@ Java 버전: 21 이상
 * `/done on` 후원자 연동 기능 활성화
 * `/done off` 후원자 연동 기능 비활성화
 * `/done reconnect all` 전체 재접속
-* `/done reconnect <닉네임>` 해당 닉네임 재접속, 컨피그에서 치지직/아프리카 바로 아래 단계의 닉네임을 입력
+* `/done reconnect <닉네임>` 해당 닉네임 재접속, 컨피그에서 치지직/숲 바로 아래 단계의 닉네임을 입력
 * `/done reload` 설정 파일 리로드 및 재접속

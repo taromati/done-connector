@@ -3,7 +3,6 @@ package me.taromati.doneconnector.chzzk;
 import lombok.Getter;
 import me.taromati.doneconnector.DoneConnector;
 import me.taromati.doneconnector.Logger;
-import me.taromati.doneconnector.afreecatv.AfreecaTVPacket;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.java_websocket.client.WebSocketClient;
@@ -13,8 +12,6 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 
@@ -96,37 +93,27 @@ public class ChzzkWebSocket extends WebSocketClient {
 
     @Override
     public void onMessage(String message) {
-        if (DoneConnector.debug) {
-            Logger.info(ChatColor.WHITE + "[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] onMessage: " + message);
-        }
+        Logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] onMessage: " + message);
 
         try {
             JSONObject messageObject = (JSONObject) parser.parse(message);
-            if (DoneConnector.debug) {
-                Logger.info(ChatColor.WHITE + "[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 파싱 시작");
-            }
-            int cmd = Integer.parseInt(messageObject.get("cmd").toString());
 
+            Logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 파싱 시작");
+
+            int cmd = Integer.parseInt(messageObject.get("cmd").toString());
             if (cmd == CHZZK_CHAT_CMD_PING) {
                 JSONObject pongObject = new JSONObject();
                 pongObject.put("cmd", CHZZK_CHAT_CMD_PONG);
                 pongObject.put("ver", 2);
                 send(pongObject.toJSONString());
-                if (DoneConnector.debug) {
-                    Logger.info(ChatColor.WHITE + "[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] ping");
-                }
+                Logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] ping");
+
                 return;
             }
+
             if (cmd == CHZZK_CHAT_CMD_PONG) {
-                if (DoneConnector.debug) {
-                    Logger.info(ChatColor.WHITE + "[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] pong");
-                }
-                return;
-            }
-            if (cmd != CHZZK_CHAT_CMD_DONATION) {
-//                if (DoneConnector.debug) {
-//                    Logger.info(ChatColor.WHITE + "[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 도네이션 아님");
-//                }
+                Logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] pong");
+
                 return;
             }
 
@@ -134,6 +121,7 @@ public class ChzzkWebSocket extends WebSocketClient {
             String uid = (String) bdyObject.get("uid");
             String msg = (String) bdyObject.get("msg");
             String nickname = "익명";
+
             if (Objects.equals(uid, "anonymous") == false) {
                 String profile = (String) bdyObject.get("profile");
                 JSONObject profileObejct = (JSONObject) parser.parse(profile);
@@ -142,20 +130,20 @@ public class ChzzkWebSocket extends WebSocketClient {
 
             String extras = (String) bdyObject.get("extras");
             JSONObject extraObject = (JSONObject) parser.parse(extras);
+
             if (extraObject.get("payAmount") == null) {
-                if (DoneConnector.debug) {
-                    Logger.info(ChatColor.WHITE + "[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 구독 메시지 무시");
-                }
+                Logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 구독 메시지 무시");
+
                 return;
             }
-            int payAmount = Integer.parseInt(extraObject.get("payAmount").toString());
-            if (DoneConnector.debug) {
-                Logger.info(ChatColor.WHITE + "[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 파싱 완료");
-            }
 
+            int payAmount = Integer.parseInt(extraObject.get("payAmount").toString());
+
+            Logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 파싱 완료");
             Logger.info(ChatColor.YELLOW + nickname + ChatColor.WHITE + "님께서 " + ChatColor.GREEN + payAmount + "원" + ChatColor.WHITE + "을 후원해주셨습니다.");
 
             List<String> commands = null;
+
             if (donationRewards.containsKey(payAmount)) {
                 commands = donationRewards.get(payAmount);
             } else {
@@ -178,13 +166,14 @@ public class ChzzkWebSocket extends WebSocketClient {
             }
 
         } catch (Exception e) {
-            Logger.info(ChatColor.RED + "[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 치지직 메시지 파싱 중 오류가 발생했습니다.");
-            Logger.info(ChatColor.LIGHT_PURPLE + e.toString());
+            Logger.error("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 치지직 메시지 파싱 중 오류가 발생했습니다.");
+            Logger.debug(e.toString());
         }
     }
 
     private void call(String tag, String nickname, int payAmount, String msg, String command) {
-        String [] commandArray = command.split(";");
+        String[] commandArray = command.split(";");
+
         for (String cmd : commandArray) {
             String tempCommand = cmd;
             tempCommand = tempCommand.replaceAll("%tag%", tag);
@@ -192,6 +181,7 @@ public class ChzzkWebSocket extends WebSocketClient {
             tempCommand = tempCommand.replaceAll("%amount%", String.valueOf(payAmount));
             tempCommand = tempCommand.replaceAll("%message%", msg);
             String finalCommand = tempCommand;
+
             try {
                 Bukkit.getScheduler()
                         .callSyncMethod(DoneConnector.plugin, () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand)).get();

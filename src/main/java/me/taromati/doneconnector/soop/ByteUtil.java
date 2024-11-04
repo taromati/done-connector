@@ -1,4 +1,4 @@
-package me.taromati.doneconnector.afreecatv;
+package me.taromati.doneconnector.soop;
 
 import java.nio.charset.StandardCharsets;
 

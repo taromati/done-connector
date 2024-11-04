@@ -1,4 +1,4 @@
-package me.taromati.doneconnector.afreecatv;
+package me.taromati.doneconnector.soop;
 
 import lombok.Getter;
 import me.taromati.doneconnector.DoneConnector;
@@ -18,10 +18,10 @@ import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 
-public class AfreecaTVWebSocket extends WebSocketClient {
-    private final AfreecaTVLiveInfo liveInfo;
+public class SoopWebSocket extends WebSocketClient {
+    private final SoopLiveInfo liveInfo;
     @Getter
-    private final Map<String, String> afreecaTVUser;
+    private final Map<String, String> soopUser;
     private final Map<Integer, List<String>> donationRewards;
 
     private Thread pingThread;
@@ -50,46 +50,51 @@ public class AfreecaTVWebSocket extends WebSocketClient {
     // 주기적으로 핑을 보내서 메세지를 계속 수신하는 패킷, PING_PACKET = f'{ESC}000000000100{F}'
     private static final String PING_PACKET = makePacket(COMMAND_PING, F);
 
-    private Map<String, AfreecaTVPacket> packetMap = new HashMap<>();
+    private Map<String, SoopPacket> packetMap = new HashMap<>();
 
-    public AfreecaTVWebSocket(String serverUri, Draft_6455 draft6455, AfreecaTVLiveInfo liveInfo, Map<String, String> afreecaTVUser, HashMap<Integer, List<String>> donationRewards) {
+    public SoopWebSocket(String serverUri, Draft_6455 draft6455, SoopLiveInfo liveInfo, Map<String, String> soopUser, HashMap<Integer, List<String>> donationRewards) {
         super(URI.create(serverUri), draft6455);
         this.setConnectionLostTimeout(0);
         this.setSocketFactory(SSLUtils.createSSLSocketFactory());
 
         this.liveInfo = liveInfo;
-        this.afreecaTVUser = afreecaTVUser;
+        this.soopUser = soopUser;
         this.donationRewards = donationRewards;
     }
 
     @Override
     public void onOpen(ServerHandshake handshakedata) {
-        Logger.info(ChatColor.GREEN + "[AfreecaTVWebsocket][" + afreecaTVUser.get("nickname") + "] 아프리카 웹소켓 연결이 연결되었습니다.");
+        Logger.info(ChatColor.GREEN + "[SoopWebsocket][" + soopUser.get("nickname") + "] 숲 웹소켓 연결이 연결되었습니다.");
 
         isAlive = true;
 
         pingThread = new Thread(() -> {
             // Connect msg Send
             byte[] connectPacketBytes = CONNECT_PACKET.getBytes(StandardCharsets.UTF_8);
+
             send(connectPacketBytes);
+
             while (isAlive) {
                 try {
                     Thread.sleep(59996);
 
                     byte[] pingPacketBytes = PING_PACKET.getBytes(StandardCharsets.UTF_8);
+
                     send(pingPacketBytes);
 
-                    for (Map.Entry<String, AfreecaTVPacket> entry : packetMap.entrySet()) {
-                        AfreecaTVPacket packet = entry.getValue();
+                    for (Map.Entry<String, SoopPacket> entry : packetMap.entrySet()) {
+                        SoopPacket packet = entry.getValue();
+
                         if (packet.getReceivedTime().isBefore(LocalDateTime.now().minusMinutes(1))) {
                             packetMap.remove(entry.getKey());
                         }
                     }
                 } catch (InterruptedException ignore) {
-                    Logger.info(ChatColor.RED + "아프리카 웹소켓 핑 스레드가 종료되었습니다.");
+                    Logger.error("숲 웹소켓 핑 스레드가 종료되었습니다.");
                 }
             }
         });
+
         pingThread.start();
     }
 
@@ -99,29 +104,32 @@ public class AfreecaTVWebSocket extends WebSocketClient {
 
     @Override
     public void onMessage(ByteBuffer bytes) {
-        if (DoneConnector.debug) {
-            Logger.info(ChatColor.WHITE + "[AfreecaTVWebSocket][" + afreecaTVUser.get("nickname") + "] onMessage: " + new String(bytes.array(), StandardCharsets.UTF_8));
-        }
+        Logger.debug("[SoopWebSocket][" + soopUser.get("nickname") + "] onMessage: " + new String(bytes.array(), StandardCharsets.UTF_8));
 
         String message = new String(bytes.array(), StandardCharsets.UTF_8);
+
         if (CONNECT_RES_PACKET.equals(message)) {
             String CHATNO = liveInfo.CHATNO();
             // 메세지를 내려받기 위해 보내는 패킷, JOIN_PACKET = f'{ESC}0002{calculate_byte_size(CHATNO):06}00{F}{CHATNO}{F*5}'
             String JOIN_PACKET = makePacket(COMMAND_JOIN, String.format("%s%s%s", F, CHATNO, F.repeat(5)));
             byte[] joinPacketBytes = JOIN_PACKET.getBytes(StandardCharsets.UTF_8);
+
             send(joinPacketBytes);
+
             return;
         }
 
         try {
-            AfreecaTVPacket packet = new AfreecaTVPacket(message.replace(ESC, "").split(F));
+            SoopPacket packet = new SoopPacket(message.replace(ESC, "").split(F));
 
             String cmd = packet.getCommand();
+            Logger.debug("COMMAND: " + cmd);
             List<String> dataList = switch (cmd) {
                 case COMMAND_ENTER -> null;
                 case COMMAND_ENTER_FAN -> null;
                 default -> packet.getDataList();
             };
+
             if (dataList == null) {
                 return;
             }
@@ -129,13 +137,17 @@ public class AfreecaTVWebSocket extends WebSocketClient {
             String msg = null;
             String nickname = null;
             int payAmount = 0;
+
             if (cmd.equals(COMMAND_DONE)) {
                 packetMap.put(dataList.get(2), packet);
             } else if (cmd.equals(COMMAND_CHAT)) {
                 String nick = dataList.get(5);
+
                 if (packetMap.containsKey(nick)) {
-                    AfreecaTVPacket donePacket = packetMap.get(nick);
+                    SoopPacket donePacket = packetMap.get(nick);
+
                     packetMap.remove(nick);
+
                     msg = dataList.get(0);
                     nickname = donePacket.getDataList().get(2);
                     payAmount = Integer.parseInt(donePacket.getDataList().get(3)) * 100;
@@ -167,21 +179,23 @@ public class AfreecaTVWebSocket extends WebSocketClient {
                 Random rand = new Random();
                 int randomIndex = rand.nextInt(commands.size());
                 String command = commands.get(randomIndex);
-                call(afreecaTVUser.get("tag"), nickname, payAmount, msg, command);
+
+                call(soopUser.get("tag"), nickname, payAmount, msg, command);
             } else {
                 for (String command : commands) {
-                    call(afreecaTVUser.get("tag"), nickname, payAmount, msg, command);
+                    call(soopUser.get("tag"), nickname, payAmount, msg, command);
                 }
             }
 
         } catch (Exception e) {
-            Logger.info(ChatColor.RED + "[AfreecaTVWebsocket][" + afreecaTVUser.get("nickname") + "] 아프리카 메시지 파싱 중 오류가 발생했습니다.");
-            Logger.info(ChatColor.LIGHT_PURPLE + e.getMessage());
+            Logger.error("[SoopWebsocket][" + soopUser.get("nickname") + "] 숲 메시지 파싱 중 오류가 발생했습니다.");
+            Logger.debug(e.getMessage());
         }
     }
 
     private void call(String tag, String nickname, int payAmount, String msg, String command) {
-        String [] commandArray = command.split(";");
+        String[] commandArray = command.split(";");
+
         for (String cmd : commandArray) {
             String tempCommand = cmd;
             tempCommand = tempCommand.replaceAll("%tag%", tag);
@@ -189,6 +203,7 @@ public class AfreecaTVWebSocket extends WebSocketClient {
             tempCommand = tempCommand.replaceAll("%amount%", String.valueOf(payAmount));
             tempCommand = tempCommand.replaceAll("%message%", msg);
             String finalCommand = tempCommand;
+
             try {
                 Bukkit.getScheduler()
                         .callSyncMethod(DoneConnector.plugin, () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand)).get();
@@ -200,7 +215,7 @@ public class AfreecaTVWebSocket extends WebSocketClient {
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        Logger.info(ChatColor.RED + "[AfreecaTVWebsocket][" + afreecaTVUser.get("nickname") + "] 아프리카 웹소켓 연결이 끊겼습니다.");
+        Logger.info(ChatColor.RED + "[SoopWebsocket][" + soopUser.get("nickname") + "] 숲 웹소켓 연결이 끊겼습니다.");
 
         isAlive = false;
 

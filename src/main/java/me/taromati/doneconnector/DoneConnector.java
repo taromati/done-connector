@@ -104,9 +104,10 @@ public final class DoneConnector extends JavaPlugin implements Listener {
 
         try {
             Logger.info(ChatColor.WHITE + "치지직 아이디 로드 중...");
-            Logger.debug(this.getConfig().getConfigurationSection("치지직").getKeys(false).toString());
+            Set<String> nicknameList = this.getConfig().getConfigurationSection("치지직").getKeys(false);
+            Logger.debug(nicknameList.toString());
 
-            for (String nickname : this.getConfig().getConfigurationSection("치지직").getKeys(false)) {
+            for (String nickname : nicknameList) {
                 Logger.debug(ChatColor.WHITE + "치지직 닉네임: " + nickname);
                 String id = this.getConfig().getString("치지직." + nickname + ".식별자");
                 Logger.debug(ChatColor.WHITE + "치지직 아이디: " + id);
@@ -133,9 +134,11 @@ public final class DoneConnector extends JavaPlugin implements Listener {
 
         try {
             Logger.debug(ChatColor.WHITE + "숲 아이디 로드 중...");
-            Logger.debug(this.getConfig().getConfigurationSection("숲").getKeys(false).toString());
+            Set<String> nicknameList = this.getConfig().getConfigurationSection("숲").getKeys(false);
+            nicknameList.addAll(this.getConfig().getConfigurationSection("아프리카").getKeys(false));
+            Logger.debug(nicknameList.toString());
 
-            for (String nickname : this.getConfig().getConfigurationSection("숲").getKeys(false)) {
+            for (String nickname : nicknameList) {
                 Logger.debug(ChatColor.WHITE + "숲 닉네임: " + nickname);
                 String id = this.getConfig().getString("숲." + nickname + ".식별자");
                 Logger.debug(ChatColor.WHITE + "숲 아이디: " + id);

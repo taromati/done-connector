@@ -134,8 +134,13 @@ public final class DoneConnector extends JavaPlugin implements Listener {
 
         try {
             Logger.debug(ChatColor.WHITE + "숲 아이디 로드 중...");
-            Set<String> nicknameList = this.getConfig().getConfigurationSection("숲").getKeys(false);
-            nicknameList.addAll(this.getConfig().getConfigurationSection("아프리카").getKeys(false));
+            Set<String> nicknameList = new HashSet<>();
+            if (this.getConfig().getConfigurationSection("숲") != null) {
+                nicknameList.addAll(this.getConfig().getConfigurationSection("숲").getKeys(false));
+            }
+            if (this.getConfig().getConfigurationSection("아프리카") != null) {
+                nicknameList.addAll(this.getConfig().getConfigurationSection("아프리카").getKeys(false));
+            }
             Logger.debug(nicknameList.toString());
 
             for (String nickname : nicknameList) {

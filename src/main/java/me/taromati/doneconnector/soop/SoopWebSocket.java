@@ -15,6 +15,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 
@@ -27,6 +28,7 @@ public class SoopWebSocket extends WebSocketClient {
     private Thread pingThread;
 
     private boolean isAlive = true;
+    private boolean poong = false;
 
     private static final String F = "\u000c";
     private static final String ESC = "\u001b\t";
@@ -50,9 +52,9 @@ public class SoopWebSocket extends WebSocketClient {
     // 주기적으로 핑을 보내서 메세지를 계속 수신하는 패킷, PING_PACKET = f'{ESC}000000000100{F}'
     private static final String PING_PACKET = makePacket(COMMAND_PING, F);
 
-    private Map<String, SoopPacket> packetMap = new HashMap<>();
+    private final Map<String, SoopPacket> packetMap = new HashMap<>();
 
-    public SoopWebSocket(String serverUri, Draft_6455 draft6455, SoopLiveInfo liveInfo, Map<String, String> soopUser, HashMap<Integer, List<String>> donationRewards) {
+    public SoopWebSocket(String serverUri, Draft_6455 draft6455, SoopLiveInfo liveInfo, Map<String, String> soopUser, HashMap<Integer, List<String>> donationRewards, boolean poong) {
         super(URI.create(serverUri), draft6455);
         this.setConnectionLostTimeout(0);
         this.setSocketFactory(SSLUtils.createSSLSocketFactory());
@@ -60,6 +62,7 @@ public class SoopWebSocket extends WebSocketClient {
         this.liveInfo = liveInfo;
         this.soopUser = soopUser;
         this.donationRewards = donationRewards;
+        this.poong = poong;
     }
 
     @Override
@@ -134,66 +137,80 @@ public class SoopWebSocket extends WebSocketClient {
                 return;
             }
 
-            String msg = null;
-            String nickname = null;
-            int payAmount = 0;
-
             if (cmd.equals(COMMAND_DONE)) {
-                packetMap.put(dataList.get(2), packet);
+                String nickname = dataList.get(2);
+                synchronized (packetMap) {
+                    packetMap.put(nickname, packet);
+                }
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        Thread.sleep(1000); // 1초 타임아웃
+                        synchronized (packetMap) {
+                            var removed = packetMap.remove(nickname);
+                            if (removed == null) {
+                                return;
+                            }
+                        }
+
+                        int tempPayAmount = Integer.parseInt(dataList.get(3));
+                        int payAmount = poong ? tempPayAmount : tempPayAmount * 100;
+                        handleDone(nickname, payAmount, "");
+                    } catch (InterruptedException e) {
+                        Logger.error("[SoopWebsocket][" + soopUser.get("nickname") + "] 숲 패킷 타임아웃 중 오류가 발생했습니다.");
+                        Logger.debug(e.getMessage());
+                    }
+                });
             } else if (cmd.equals(COMMAND_CHAT)) {
                 String nick = dataList.get(5);
 
-                if (packetMap.containsKey(nick)) {
-                    SoopPacket donePacket = packetMap.get(nick);
-
-                    packetMap.remove(nick);
-
-                    msg = dataList.get(0);
-                    nickname = donePacket.getDataList().get(2);
-                    payAmount = Integer.parseInt(donePacket.getDataList().get(3)) * 100;
-                } else {
-                    return;
+                SoopPacket donePacket;
+                synchronized (packetMap) {
+                    donePacket = packetMap.remove(nick);
+                    if (donePacket == null) {
+                        return;
+                    }
                 }
-            } else {
-                return;
+
+                String msg = dataList.get(0);
+                String nickname = donePacket.getDataList().get(2);
+                int tempPayAmount = Integer.parseInt(donePacket.getDataList().get(3));
+                int payAmount = poong ? tempPayAmount : tempPayAmount * 100;
+                handleDone(nickname, payAmount, msg);
             }
-
-            if (msg == null || nickname == null || payAmount == 0) {
-                return;
-            }
-
-            Logger.info(ChatColor.YELLOW + nickname + ChatColor.WHITE + "님께서 " + ChatColor.GREEN + payAmount + "원" + ChatColor.WHITE + "을 후원해주셨습니다.");
-
-            List<String> commands = null;
-            if (donationRewards.containsKey(payAmount)) {
-                commands = donationRewards.get(payAmount);
-            } else {
-                commands = donationRewards.get(0);
-            }
-
-            if (commands == null) {
-                return;
-            }
-
-            if (DoneConnector.random) {
-                Random rand = new Random();
-                int randomIndex = rand.nextInt(commands.size());
-                String command = commands.get(randomIndex);
-
-                call(soopUser.get("tag"), nickname, payAmount, msg, command);
-            } else {
-                for (String command : commands) {
-                    call(soopUser.get("tag"), nickname, payAmount, msg, command);
-                }
-            }
-
         } catch (Exception e) {
             Logger.error("[SoopWebsocket][" + soopUser.get("nickname") + "] 숲 메시지 파싱 중 오류가 발생했습니다.");
             Logger.debug(e.getMessage());
         }
     }
 
-    private void call(String tag, String nickname, int payAmount, String msg, String command) {
+    private void handleDone(String nickname, int payAmount, String msg) {
+        Logger.info(ChatColor.YELLOW + nickname + ChatColor.WHITE + "님께서 " + ChatColor.GREEN + payAmount + "원" + ChatColor.WHITE + "을 후원해주셨습니다.");
+
+        List<String> commands = null;
+        if (donationRewards.containsKey(payAmount)) {
+            commands = donationRewards.get(payAmount);
+        } else {
+            commands = donationRewards.get(0);
+        }
+
+        if (commands == null) {
+            return;
+        }
+
+        if (DoneConnector.random) {
+            Random rand = new Random();
+            int randomIndex = rand.nextInt(commands.size());
+            String command = commands.get(randomIndex);
+
+            callBukkit(soopUser.get("tag"), nickname, payAmount, msg, command);
+        } else {
+            for (String command : commands) {
+                callBukkit(soopUser.get("tag"), nickname, payAmount, msg, command);
+            }
+        }
+    }
+
+    private void callBukkit(String tag, String nickname, int payAmount, String msg, String command) {
         String[] commandArray = command.split(";");
 
         for (String cmd : commandArray) {

@@ -12,6 +12,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -20,6 +21,7 @@ import org.java_websocket.protocols.Protocol;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class DoneConnector extends JavaPlugin implements Listener {
     public static Plugin plugin;
@@ -153,21 +155,41 @@ public final class DoneConnector extends JavaPlugin implements Listener {
 
             for (String nickname : nicknameList) {
                 Logger.debug("숲 닉네임: " + nickname);
-                String id = config.getString("숲." + nickname + ".식별자");
-                Logger.debug("숲 아이디: " + id);
-                String tag = config.getString("숲." + nickname + ".마크닉네임");
-                Logger.debug("숲 마크닉네임: " + tag);
+                if (config.getString("숲." + nickname + ".식별자") != null) {
+                    String id = config.getString("숲." + nickname + ".식별자");
+                    Logger.debug("숲 아이디: " + id);
+                    String tag = config.getString("숲." + nickname + ".마크닉네임");
+                    Logger.debug("숲 마크닉네임: " + tag);
 
-                if (id == null || tag == null) {
-                    throw new DoneException(ExceptionCode.ID_NOT_FOUND);
+                    if (id == null || tag == null) {
+                        throw new DoneException(ExceptionCode.ID_NOT_FOUND);
+                    }
+
+                    Map<String, String> userMap = new HashMap<>();
+                    userMap.put("nickname", nickname);
+                    userMap.put("id", id);
+                    userMap.put("tag", tag);
+                    soopUserList.add(userMap);
+                    Logger.debug("숲 유저: " + userMap);
+                } else if (config.getString("아프리카." + nickname + ".식별자") != null) {
+                    // TODO: 하위호환용, 추후 제거.
+                    String id = config.getString("아프리카." + nickname + ".식별자");
+                    Logger.debug("아프리카 아이디: " + id);
+                    String tag = config.getString("아프리카." + nickname + ".마크닉네임");
+                    Logger.debug("아프리카 마크닉네임: " + tag);
+
+                    if (id == null || tag == null) {
+                        throw new DoneException(ExceptionCode.ID_NOT_FOUND);
+                    }
+
+                    Map<String, String> userMap = new HashMap<>();
+                    userMap.put("nickname", nickname);
+                    userMap.put("id", id);
+                    userMap.put("tag", tag);
+                    soopUserList.add(userMap);
+                    Logger.debug("아프리카 유저: " + userMap);
                 }
 
-                Map<String, String> userMap = new HashMap<>();
-                userMap.put("nickname", nickname);
-                userMap.put("id", id);
-                userMap.put("tag", tag);
-                soopUserList.add(userMap);
-                Logger.debug("숲 유저: " + userMap);
             }
         } catch (Exception e) {
             throw new DoneException(ExceptionCode.ID_NOT_FOUND);
@@ -195,21 +217,27 @@ public final class DoneConnector extends JavaPlugin implements Listener {
     }
 
     private void disconnectByNickName(String target) {
-        for (ChzzkWebSocket webSocket : chzzkWebSocketList) {
-            if (Objects.equals(webSocket.getChzzkUser().get("nickname"), target) || Objects.equals(webSocket.getChzzkUser().get("tag"), target)) {
-                webSocket.close();
-                chzzkWebSocketList.remove(webSocket);
-            }
-        }
-        for (SoopWebSocket webSocket : soopWebSocketList) {
-            if (Objects.equals(webSocket.getSoopUser().get("nickname"), target) || Objects.equals(webSocket.getSoopUser().get("tag"), target)) {
-                webSocket.close();
-                soopWebSocketList.remove(webSocket);
-            }
-        }
+        chzzkWebSocketList = chzzkWebSocketList.stream()
+                .filter(chzzkWebSocket -> {
+                    if (Objects.equals(chzzkWebSocket.getChzzkUser().get("nickname"), target) || Objects.equals(chzzkWebSocket.getChzzkUser().get("tag"), target)) {
+                        chzzkWebSocket.close();
+                        return false;
+                    }
+                    return true;
+                })
+                .collect(Collectors.toList());
+        soopWebSocketList = soopWebSocketList.stream()
+                .filter(soopWebSocket -> {
+                    if (Objects.equals(soopWebSocket.getSoopUser().get("nickname"), target) || Objects.equals(soopWebSocket.getSoopUser().get("tag"), target)) {
+                        soopWebSocket.close();
+                        return false;
+                    }
+                    return true;
+                })
+                .collect(Collectors.toList());
     }
 
-    private void connectChzzk(Map<String, String> chzzkUser) throws InterruptedException {
+    private boolean connectChzzk(Map<String, String> chzzkUser) {
         try {
             String chzzkId = chzzkUser.get("id");
             String chatChannelId = ChzzkApi.getChatChannelId(chzzkId);
@@ -225,9 +253,11 @@ public final class DoneConnector extends JavaPlugin implements Listener {
             ChzzkWebSocket webSocket = new ChzzkWebSocket("wss://kr-ss1.chat.naver.com/chat", chatChannelId, accessToken, extraToken, chzzkUser, donationRewards);
             webSocket.connect();
             chzzkWebSocketList.add(webSocket);
+            return true;
         } catch (Exception e) {
             Logger.error("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 치지직 채팅에 연결 중 오류가 발생했습니다.");
             Logger.debug(e.getMessage());
+            return false;
         }
     }
 
@@ -245,7 +275,7 @@ public final class DoneConnector extends JavaPlugin implements Listener {
         chzzkWebSocketList.clear();
     }
 
-    private void connectSoop(Map<String, String> soopUser) throws InterruptedException {
+    private boolean connectSoop(Map<String, String> soopUser) throws InterruptedException {
         String soopId = soopUser.get("id");
 
         try {
@@ -257,10 +287,11 @@ public final class DoneConnector extends JavaPlugin implements Listener {
             SoopWebSocket webSocket = new SoopWebSocket("wss://" + liveInfo.CHDOMAIN() + ":" + liveInfo.CHPT() + "/Websocket/" + liveInfo.BJID(), draft6455, liveInfo, soopUser, donationRewards, poong);
             webSocket.connect();
             soopWebSocketList.add(webSocket);
+            return true;
         } catch (Exception e) {
             Logger.error("[SoopWebsocket][" + soopUser.get("nickname") + "] 숲 채팅에 연결 중 오류가 발생했습니다.");
-
             Logger.debug(e.getMessage());
+            return false;
         }
     }
 
@@ -318,33 +349,7 @@ public final class DoneConnector extends JavaPlugin implements Listener {
 
                     return true;
                 }
-                // 닉네임으로 재접속
-                {
-                    disconnectByNickName(target);
-                    Map<String, String> chzzkUser = chzzkUserList.stream()
-                            .filter(user -> Objects.equals(user.get("nickname"), target))
-                            .toList()
-                            .get(0);
-                    if (chzzkUser != null) {
-                        connectChzzk(chzzkUser);
-                        Logger.info(ChatColor.GREEN + "[" + target + "] 재 접속을 완료 했습니다.");
-                    }
-
-                    Map<String, String> soopUser = soopUserList.stream()
-                            .filter(user -> Objects.equals(user.get("nickname"), target))
-                            .toList()
-                            .get(0);
-                    if (soopUser != null) {
-                        connectSoop(soopUser);
-                        Logger.info(ChatColor.GREEN + "[" + target + "] 재 접속을 완료 했습니다.");
-                    }
-
-                    if (chzzkUser == null && soopUser == null) {
-                        Logger.warn("닉네임을 찾을 수 없습니다.");
-                        return false;
-                    }
-                }
-
+                // 방송/마크 닉네임으로 재접속
                 {
                     disconnectByNickName(target);
                     int reconnectCount = chzzkUserList.stream()
@@ -354,7 +359,7 @@ public final class DoneConnector extends JavaPlugin implements Listener {
                                     connectChzzk(user);
                                     Logger.info(ChatColor.GREEN + "[" + target + "] 재 접속을 완료 했습니다.");
                                     return 1;
-                                } catch (InterruptedException e) {
+                                } catch (Exception e) {
                                     Logger.error("[" + target + "] 채팅에 연결 중 오류가 발생했습니다.");
                                 }
                                 return 0;
@@ -369,7 +374,7 @@ public final class DoneConnector extends JavaPlugin implements Listener {
                                     connectSoop(user);
                                     Logger.info(ChatColor.GREEN + "[" + target + "] 재 접속을 완료 했습니다.");
                                     return 1;
-                                } catch (InterruptedException e) {
+                                } catch (Exception e) {
                                     Logger.error("[" + target + "] 채팅에 연결 중 오류가 발생했습니다.");
                                 }
                                 return 0;
@@ -380,6 +385,37 @@ public final class DoneConnector extends JavaPlugin implements Listener {
                     if (reconnectCount <= 0) {
                         Logger.warn("닉네임을 찾을 수 없습니다.");
                         return false;
+                    }
+                }
+            } else if (cmd.equalsIgnoreCase("add")) {
+                if (args.length < 5) {
+                    Logger.error("옵션 누락. /done add <플랫폼> <방송닉> <방송ID> <마크닉>");
+                    return false;
+                }
+                String platform = args[1];
+                String nickname = args[2];
+                String id = args[3];
+                String tag = args[4];
+
+                switch (platform) {
+                    case "치지직" -> {
+                        Map<String, String> userMap = new HashMap<>();
+                        userMap.put("nickname", nickname);
+                        userMap.put("id", id);
+                        userMap.put("tag", tag);
+
+                        if (connectChzzk(userMap)) {
+                            chzzkUserList.add(userMap);
+                        }
+                    }
+                    case "숲" -> {
+                        Map<String, String> userMap = new HashMap<>();
+                        userMap.put("nickname", nickname);
+                        userMap.put("id", id);
+                        userMap.put("tag", tag);
+                        if (connectSoop(userMap)) {
+                            soopUserList.add(userMap);
+                        }
                     }
                 }
 
@@ -394,7 +430,7 @@ public final class DoneConnector extends JavaPlugin implements Listener {
             } else {
                 return false;
             }
-        } catch (InterruptedException e) {
+        } catch (Exception e) {
             Logger.error("커맨드 수행 중 오류가 발생했습니다.");
 
             return false;
@@ -413,7 +449,7 @@ public final class DoneConnector extends JavaPlugin implements Listener {
         }
 
         if (args.length == 1) {
-            List<String> commandList = new ArrayList<>(Arrays.asList("on", "off", "reconnect", "reload"));
+            List<String> commandList = new ArrayList<>(Arrays.asList("on", "off", "reconnect", "reload", "add"));
 
             if (args[0].isEmpty()) {
                 return commandList;
@@ -424,17 +460,16 @@ public final class DoneConnector extends JavaPlugin implements Listener {
             }
         }
 
-        // TODO: Test
-//        if (args.length == 2 && args[0].equalsIgnoreCase("reconnect")) {
-//            if (args[1].isEmpty()) {
-//                return new ArrayList<>(List.of("all"));
-//            } else {
-//                return Bukkit.getOnlinePlayers().stream()
-//                        .map(Player::getName)
-//                        .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
-//                        .toList();
-//            }
-//        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("reconnect")) {
+            if (args[1].isEmpty()) {
+                return new ArrayList<>(List.of("all"));
+            } else {
+                return Bukkit.getOnlinePlayers().stream()
+                        .map(Player::getName)
+                        .filter(name -> name.toLowerCase().startsWith(args[1].toLowerCase()))
+                        .toList();
+            }
+        }
 
         return Collections.emptyList();
     }

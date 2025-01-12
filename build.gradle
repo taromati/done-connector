@@ -35,11 +35,12 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:1.20.2-R0.1-SNAPSHOT")
     compileOnly("io.papermc.paper:paper-api:1.20.4-R0.1-SNAPSHOT")
     // jdk 17 시 아래 api 제거
-//    compileOnly("io.papermc.paper:paper-api:1.20.5-R0.1-SNAPSHOT")
-//    compileOnly("io.papermc.paper:paper-api:1.20.6-R0.1-SNAPSHOT")
-//    compileOnly("io.papermc.paper:paper-api:1.21-R0.1-SNAPSHOT")
-//    compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
-//    compileOnly("io.papermc.paper:paper-api:1.21.3-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.20.5-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.20.6-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.21-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.21.3-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
 
     compileOnly("org.projectlombok:lombok:1.18.32")
     annotationProcessor("org.projectlombok:lombok:1.18.32")
@@ -48,11 +49,11 @@ dependencies {
     implementation("com.googlecode.json-simple:json-simple:1.1.1")
 }
 
-//def sourceJavaVersion = 21
-//def targetJavaVersion = 21
+def sourceJavaVersion = 21
+def targetJavaVersion = 21
 // jdK 17
-def sourceJavaVersion = 17
-def targetJavaVersion = 17
+//def sourceJavaVersion = 17
+//def targetJavaVersion = 17
 java {
     def sourceVersion = JavaVersion.toVersion(sourceJavaVersion)
     sourceCompatibility = sourceVersion

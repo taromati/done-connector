@@ -100,49 +100,55 @@ public class ChzzkWebSocket extends WebSocketClient {
             logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 파싱 시작");
 
             int cmd = Integer.parseInt(messageObject.get("cmd").toString());
-            if (cmd == CHZZK_CHAT_CMD_PING) {
-                JSONObject pongObject = new JSONObject();
-                pongObject.put("cmd", CHZZK_CHAT_CMD_PONG);
-                pongObject.put("ver", 2);
-                send(pongObject.toJSONString());
-                logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] ping");
 
-                return;
+            switch (cmd) {
+                case CHZZK_CHAT_CMD_CONNECT_RES -> logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 연결 응답 수신");
+                case CHZZK_CHAT_CMD_SEND_CHAT -> logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 채팅 전송 응답 수신");
+                case CHZZK_CHAT_CMD_REQUEST_RECENT_CHAT -> logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 최근 채팅 요청 응답 수신");
+                case CHZZK_CHAT_CMD_PING -> {
+                    JSONObject pongObject = new JSONObject();
+                    pongObject.put("cmd", CHZZK_CHAT_CMD_PONG);
+                    pongObject.put("ver", 2);
+                    send(pongObject.toJSONString());
+                    logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] ping");
+                }
+                case CHZZK_CHAT_CMD_PONG -> logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] pong");
+
+                case CHZZK_CHAT_CMD_CHAT -> logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 채팅 수신");
+                case CHZZK_CHAT_CMD_DONATION -> {
+                    logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 후원 수신");
+
+                    JSONObject bdyObject = (JSONObject) ((JSONArray) messageObject.get("bdy")).get(0);
+                    String uid = (String) bdyObject.get("uid");
+                    String msg = (String) bdyObject.get("msg");
+                    String nickname = "익명";
+
+                    if (Objects.equals(uid, "anonymous") == false) {
+                        String profile = (String) bdyObject.get("profile");
+                        JSONObject profileObejct = (JSONObject) parser.parse(profile);
+                        nickname = (String) profileObejct.get("nickname");
+                    }
+
+                    String extras = (String) bdyObject.get("extras");
+                    JSONObject extraObject = (JSONObject) parser.parse(extras);
+
+                    if (extraObject.get("payAmount") == null) {
+                        logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 구독 메시지 무시");
+                        return;
+                    }
+
+                    int payAmount = Integer.parseInt(extraObject.get("payAmount").toString());
+
+                    logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 파싱 완료");
+
+                    if (listener != null) {
+                        listener.onDonation("Chzzk", chzzkUser.get("tag"), nickname, payAmount, msg);
+                    }
+                }
+                default -> logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 알 수 없는 메시지 수신, cmd: " + cmd);
             }
 
-            if (cmd == CHZZK_CHAT_CMD_PONG) {
-                logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] pong");
 
-                return;
-            }
-
-            JSONObject bdyObject = (JSONObject) ((JSONArray) messageObject.get("bdy")).get(0);
-            String uid = (String) bdyObject.get("uid");
-            String msg = (String) bdyObject.get("msg");
-            String nickname = "익명";
-
-            if (Objects.equals(uid, "anonymous") == false) {
-                String profile = (String) bdyObject.get("profile");
-                JSONObject profileObejct = (JSONObject) parser.parse(profile);
-                nickname = (String) profileObejct.get("nickname");
-            }
-
-            String extras = (String) bdyObject.get("extras");
-            JSONObject extraObject = (JSONObject) parser.parse(extras);
-
-            if (extraObject.get("payAmount") == null) {
-                logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 구독 메시지 무시");
-
-                return;
-            }
-
-            int payAmount = Integer.parseInt(extraObject.get("payAmount").toString());
-
-            logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 파싱 완료");
-
-            if (listener != null) {
-                listener.onDonation("Chzzk", chzzkUser.get("tag"), nickname, payAmount, msg);
-            }
 
         } catch (Exception e) {
             logger.error("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 치지직 메시지 파싱 중 오류가 발생했습니다.");

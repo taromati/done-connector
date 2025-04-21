@@ -2,7 +2,7 @@ package me.taromati.doneconnector.chzzk;
 
 import lombok.Getter;
 import me.taromati.doneconnector.DoneConnector;
-import me.taromati.doneconnector.Logger;
+import me.taromati.doneconnector.logger.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.java_websocket.client.WebSocketClient;
@@ -22,6 +22,7 @@ public class ChzzkWebSocket extends WebSocketClient {
     @Getter
     private final Map<String, String> chzzkUser;
     private final HashMap<Integer, List<String>> donationRewards;
+    private final Logger logger;
 
     private Thread pingThread;
 
@@ -39,7 +40,7 @@ public class ChzzkWebSocket extends WebSocketClient {
 
     private final JSONParser parser = new JSONParser();
 
-    public ChzzkWebSocket(String serverUri, String chatChannelId, String accessToken, String extraToken, Map<String, String> chzzkUser, HashMap<Integer, List<String>> donationRewards) {
+    public ChzzkWebSocket(String serverUri, String chatChannelId, String accessToken, String extraToken, Map<String, String> chzzkUser, HashMap<Integer, List<String>> donationRewards, Logger logger) {
         super(URI.create(serverUri));
         this.setConnectionLostTimeout(0);
 
@@ -48,11 +49,12 @@ public class ChzzkWebSocket extends WebSocketClient {
         this.extraToken = extraToken;
         this.chzzkUser = chzzkUser;
         this.donationRewards = donationRewards;
+        this.logger = logger;
     }
 
     @Override
     public void onOpen(ServerHandshake handshakedata) {
-        Logger.info(ChatColor.GREEN + "[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 치지직 웹소켓 연결이 연결되었습니다.");
+        logger.done("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 치지직 웹소켓 연결이 연결되었습니다.");
 
         // Connect msg Send
         JSONObject baseObject = new JSONObject();
@@ -84,7 +86,7 @@ public class ChzzkWebSocket extends WebSocketClient {
                     pongObject.put("ver", 2);
                     send(pongObject.toJSONString());
                 } catch (InterruptedException ignore) {
-//                    Logger.info(ChatColor.RED + "치지직 웹소켓 핑 스레드가 종료되었습니다.");
+//                    logger.info(ChatColor.RED + "치지직 웹소켓 핑 스레드가 종료되었습니다.");
                 }
             }
         });
@@ -93,12 +95,12 @@ public class ChzzkWebSocket extends WebSocketClient {
 
     @Override
     public void onMessage(String message) {
-        Logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] onMessage: " + message);
+        logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] onMessage: " + message);
 
         try {
             JSONObject messageObject = (JSONObject) parser.parse(message);
 
-            Logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 파싱 시작");
+            logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 파싱 시작");
 
             int cmd = Integer.parseInt(messageObject.get("cmd").toString());
             if (cmd == CHZZK_CHAT_CMD_PING) {
@@ -106,13 +108,13 @@ public class ChzzkWebSocket extends WebSocketClient {
                 pongObject.put("cmd", CHZZK_CHAT_CMD_PONG);
                 pongObject.put("ver", 2);
                 send(pongObject.toJSONString());
-                Logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] ping");
+                logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] ping");
 
                 return;
             }
 
             if (cmd == CHZZK_CHAT_CMD_PONG) {
-                Logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] pong");
+                logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] pong");
 
                 return;
             }
@@ -132,15 +134,15 @@ public class ChzzkWebSocket extends WebSocketClient {
             JSONObject extraObject = (JSONObject) parser.parse(extras);
 
             if (extraObject.get("payAmount") == null) {
-                Logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 구독 메시지 무시");
+                logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 구독 메시지 무시");
 
                 return;
             }
 
             int payAmount = Integer.parseInt(extraObject.get("payAmount").toString());
 
-            Logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 파싱 완료");
-            Logger.info(ChatColor.YELLOW + nickname + ChatColor.WHITE + "님께서 " + ChatColor.GREEN + payAmount + "원" + ChatColor.WHITE + "을 후원해주셨습니다.");
+            logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 파싱 완료");
+            logger.info(ChatColor.YELLOW + nickname + ChatColor.WHITE + "님께서 " + ChatColor.GREEN + payAmount + "원" + ChatColor.WHITE + "을 후원해주셨습니다.");
 
             List<String> commands = null;
 
@@ -166,8 +168,8 @@ public class ChzzkWebSocket extends WebSocketClient {
             }
 
         } catch (Exception e) {
-            Logger.error("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 치지직 메시지 파싱 중 오류가 발생했습니다.");
-            Logger.debug(e.toString());
+            logger.error("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 치지직 메시지 파싱 중 오류가 발생했습니다.");
+            logger.debug(e.toString());
         }
     }
 
@@ -186,7 +188,7 @@ public class ChzzkWebSocket extends WebSocketClient {
                 Bukkit.getScheduler()
                         .callSyncMethod(DoneConnector.plugin, () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand)).get();
             } catch (InterruptedException | ExecutionException e) {
-                Logger.info(ChatColor.RED + e.getMessage());
+                logger.error(e.getMessage());
             }
         }
     }
@@ -194,7 +196,7 @@ public class ChzzkWebSocket extends WebSocketClient {
     @Override
     public void onClose(int code, String reason, boolean remote) {
 //        System.out.println("onClose: " + code + ", " + reason + ", " + remote);
-        Logger.info(ChatColor.RED + "[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 치지직 웹소켓 연결이 끊겼습니다.");
+        logger.error("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 치지직 웹소켓 연결이 끊겼습니다.");
 
         isAlive = false;
 
@@ -204,8 +206,6 @@ public class ChzzkWebSocket extends WebSocketClient {
 
     @Override
     public void onError(Exception ex) {
-        System.out.println("onError: " + ex.getMessage());
+        logger.error("onError: " + ex.getMessage());
     }
 }
-
-

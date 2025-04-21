@@ -1,6 +1,7 @@
 package me.taromati.doneconnector.soop;
 
-import me.taromati.doneconnector.Logger;
+import me.taromati.doneconnector.logger.Logger;
+import me.taromati.doneconnector.logger.LoggerFactory;
 import me.taromati.doneconnector.exception.DoneException;
 import me.taromati.doneconnector.exception.ExceptionCode;
 import org.json.simple.JSONObject;
@@ -16,6 +17,10 @@ import java.util.Map;
 
 public class SoopApi {
     public static SoopLiveInfo getPlayerLive(String bjid) {
+        return getPlayerLive(bjid, LoggerFactory.getLogger());
+    }
+
+    public static SoopLiveInfo getPlayerLive(String bjid, Logger logger) {
         String requestURL = String.format("https://live.sooplive.co.kr/afreeca/player_live_api.php?bjid=%s", bjid);
 
         try {
@@ -31,7 +36,7 @@ public class SoopApi {
             bodyJson.put("is_revive", "false");
             bodyJson.put("from_api", "0");
 
-            Logger.debug("Request URL: " + requestURL + "\n" + "Request Body: " + bodyJson.toJSONString());
+            logger.debug("Request URL: " + requestURL + "\n" + "Request Body: " + bodyJson.toJSONString());
 
             HttpRequest request = HttpRequest.newBuilder()
                     .POST(ofFormData(bodyJson))
@@ -62,7 +67,7 @@ public class SoopApi {
                         channel.get("GWPT").toString()
                 );
 
-                Logger.debug(soopLiveInfo.toString());
+                logger.debug(soopLiveInfo.toString());
 
                 return soopLiveInfo;
             } else {

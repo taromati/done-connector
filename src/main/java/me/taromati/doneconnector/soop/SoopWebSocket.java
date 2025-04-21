@@ -2,7 +2,7 @@ package me.taromati.doneconnector.soop;
 
 import lombok.Getter;
 import me.taromati.doneconnector.DoneConnector;
-import me.taromati.doneconnector.Logger;
+import me.taromati.doneconnector.logger.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import me.taromati.doneconnector.SSLUtils;
@@ -24,6 +24,7 @@ public class SoopWebSocket extends WebSocketClient {
     @Getter
     private final Map<String, String> soopUser;
     private final Map<Integer, List<String>> donationRewards;
+    private final Logger logger;
 
     private Thread pingThread;
 
@@ -54,7 +55,7 @@ public class SoopWebSocket extends WebSocketClient {
 
     private final Map<String, SoopPacket> packetMap = new HashMap<>();
 
-    public SoopWebSocket(String serverUri, Draft_6455 draft6455, SoopLiveInfo liveInfo, Map<String, String> soopUser, HashMap<Integer, List<String>> donationRewards, boolean poong) {
+    public SoopWebSocket(String serverUri, Draft_6455 draft6455, SoopLiveInfo liveInfo, Map<String, String> soopUser, HashMap<Integer, List<String>> donationRewards, boolean poong, Logger logger) {
         super(URI.create(serverUri), draft6455);
         this.setConnectionLostTimeout(0);
         this.setSocketFactory(SSLUtils.createSSLSocketFactory());
@@ -63,11 +64,12 @@ public class SoopWebSocket extends WebSocketClient {
         this.soopUser = soopUser;
         this.donationRewards = donationRewards;
         this.poong = poong;
+        this.logger = logger;
     }
 
     @Override
     public void onOpen(ServerHandshake handshakedata) {
-        Logger.info(ChatColor.GREEN + "[SoopWebsocket][" + soopUser.get("nickname") + "] 숲 웹소켓 연결이 연결되었습니다.");
+        logger.done("[SoopWebsocket][" + soopUser.get("nickname") + "] 숲 웹소켓 연결이 연결되었습니다.");
 
         isAlive = true;
 
@@ -93,7 +95,7 @@ public class SoopWebSocket extends WebSocketClient {
                         }
                     }
                 } catch (InterruptedException ignore) {
-                    Logger.error("숲 웹소켓 핑 스레드가 종료되었습니다.");
+                    logger.error("숲 웹소켓 핑 스레드가 종료되었습니다.");
                 }
             }
         });
@@ -107,7 +109,7 @@ public class SoopWebSocket extends WebSocketClient {
 
     @Override
     public void onMessage(ByteBuffer bytes) {
-        Logger.debug("[SoopWebSocket][" + soopUser.get("nickname") + "] onMessage: " + new String(bytes.array(), StandardCharsets.UTF_8));
+        logger.debug("[SoopWebSocket][" + soopUser.get("nickname") + "] onMessage: " + new String(bytes.array(), StandardCharsets.UTF_8));
 
         String message = new String(bytes.array(), StandardCharsets.UTF_8);
 
@@ -126,7 +128,7 @@ public class SoopWebSocket extends WebSocketClient {
             SoopPacket packet = new SoopPacket(message.replace(ESC, "").split(F));
 
             String cmd = packet.getCommand();
-            Logger.debug("COMMAND: " + cmd);
+            logger.debug("COMMAND: " + cmd);
             List<String> dataList = switch (cmd) {
                 case COMMAND_ENTER -> null;
                 case COMMAND_ENTER_FAN -> null;
@@ -156,8 +158,8 @@ public class SoopWebSocket extends WebSocketClient {
                         int payAmount = poong ? tempPayAmount : tempPayAmount * 100;
                         handleDone(nickname, payAmount, "");
                     } catch (InterruptedException e) {
-                        Logger.error("[SoopWebsocket][" + soopUser.get("nickname") + "] 숲 패킷 타임아웃 중 오류가 발생했습니다.");
-                        Logger.debug(e.getMessage());
+                        logger.error("[SoopWebsocket][" + soopUser.get("nickname") + "] 숲 패킷 타임아웃 중 오류가 발생했습니다.");
+                        logger.debug(e.getMessage());
                     }
                 });
             } else if (cmd.equals(COMMAND_CHAT)) {
@@ -178,13 +180,13 @@ public class SoopWebSocket extends WebSocketClient {
                 handleDone(nickname, payAmount, msg);
             }
         } catch (Exception e) {
-            Logger.error("[SoopWebsocket][" + soopUser.get("nickname") + "] 숲 메시지 파싱 중 오류가 발생했습니다.");
-            Logger.debug(e.getMessage());
+            logger.error("[SoopWebsocket][" + soopUser.get("nickname") + "] 숲 메시지 파싱 중 오류가 발생했습니다.");
+            logger.debug(e.getMessage());
         }
     }
 
     private void handleDone(String nickname, int payAmount, String msg) {
-        Logger.info(ChatColor.YELLOW + nickname + ChatColor.WHITE + "님께서 " + ChatColor.GREEN + payAmount + "원" + ChatColor.WHITE + "을 후원해주셨습니다.");
+        logger.info(ChatColor.YELLOW + nickname + ChatColor.WHITE + "님께서 " + ChatColor.GREEN + payAmount + "원" + ChatColor.WHITE + "을 후원해주셨습니다.");
 
         List<String> commands = null;
         if (donationRewards.containsKey(payAmount)) {
@@ -225,14 +227,14 @@ public class SoopWebSocket extends WebSocketClient {
                 Bukkit.getScheduler()
                         .callSyncMethod(DoneConnector.plugin, () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand)).get();
             } catch (InterruptedException | ExecutionException e) {
-                Logger.info(ChatColor.RED + e.getMessage());
+                logger.error(e.getMessage());
             }
         }
     }
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        Logger.info(ChatColor.RED + "[SoopWebsocket][" + soopUser.get("nickname") + "] 숲 웹소켓 연결이 끊겼습니다.");
+        logger.error("[SoopWebsocket][" + soopUser.get("nickname") + "] 숲 웹소켓 연결이 끊겼습니다.");
 
         isAlive = false;
 

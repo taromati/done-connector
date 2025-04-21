@@ -1,10 +1,8 @@
 package me.taromati.doneconnector.soop;
 
 import lombok.Getter;
-import me.taromati.doneconnector.DoneConnector;
+import me.taromati.doneconnector.DonationListener;
 import me.taromati.doneconnector.logger.Logger;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import me.taromati.doneconnector.SSLUtils;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.drafts.Draft_6455;
@@ -16,15 +14,14 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 
 
 public class SoopWebSocket extends WebSocketClient {
     private final SoopLiveInfo liveInfo;
     @Getter
     private final Map<String, String> soopUser;
-    private final Map<Integer, List<String>> donationRewards;
     private final Logger logger;
+    private final DonationListener listener;
 
     private Thread pingThread;
 
@@ -55,16 +52,16 @@ public class SoopWebSocket extends WebSocketClient {
 
     private final Map<String, SoopPacket> packetMap = new HashMap<>();
 
-    public SoopWebSocket(String serverUri, Draft_6455 draft6455, SoopLiveInfo liveInfo, Map<String, String> soopUser, HashMap<Integer, List<String>> donationRewards, boolean poong, Logger logger) {
+    public SoopWebSocket(String serverUri, Draft_6455 draft6455, SoopLiveInfo liveInfo, Map<String, String> soopUser, boolean poong, Logger logger, DonationListener listener) {
         super(URI.create(serverUri), draft6455);
         this.setConnectionLostTimeout(0);
         this.setSocketFactory(SSLUtils.createSSLSocketFactory());
 
         this.liveInfo = liveInfo;
         this.soopUser = soopUser;
-        this.donationRewards = donationRewards;
         this.poong = poong;
         this.logger = logger;
+        this.listener = listener;
     }
 
     @Override
@@ -186,51 +183,11 @@ public class SoopWebSocket extends WebSocketClient {
     }
 
     private void handleDone(String nickname, int payAmount, String msg) {
-        logger.info(ChatColor.YELLOW + nickname + ChatColor.WHITE + "님께서 " + ChatColor.GREEN + payAmount + "원" + ChatColor.WHITE + "을 후원해주셨습니다.");
-
-        List<String> commands = null;
-        if (donationRewards.containsKey(payAmount)) {
-            commands = donationRewards.get(payAmount);
-        } else {
-            commands = donationRewards.get(0);
-        }
-
-        if (commands == null) {
-            return;
-        }
-
-        if (DoneConnector.random) {
-            Random rand = new Random();
-            int randomIndex = rand.nextInt(commands.size());
-            String command = commands.get(randomIndex);
-
-            callBukkit(soopUser.get("tag"), nickname, payAmount, msg, command);
-        } else {
-            for (String command : commands) {
-                callBukkit(soopUser.get("tag"), nickname, payAmount, msg, command);
-            }
+        if (listener != null) {
+            listener.onDonation("Soop", soopUser.get("tag"), nickname, payAmount, msg);
         }
     }
 
-    private void callBukkit(String tag, String nickname, int payAmount, String msg, String command) {
-        String[] commandArray = command.split(";");
-
-        for (String cmd : commandArray) {
-            String tempCommand = cmd;
-            tempCommand = tempCommand.replaceAll("%tag%", tag);
-            tempCommand = tempCommand.replaceAll("%name%", nickname);
-            tempCommand = tempCommand.replaceAll("%amount%", String.valueOf(payAmount));
-            tempCommand = tempCommand.replaceAll("%message%", msg);
-            String finalCommand = tempCommand;
-
-            try {
-                Bukkit.getScheduler()
-                        .callSyncMethod(DoneConnector.plugin, () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand)).get();
-            } catch (InterruptedException | ExecutionException e) {
-                logger.error(e.getMessage());
-            }
-        }
-    }
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
@@ -244,7 +201,7 @@ public class SoopWebSocket extends WebSocketClient {
 
     @Override
     public void onError(Exception ex) {
-//        System.out.println("onError: " + ex.getMessage());
+        logger.error("onError: " + ex.getMessage());
     }
 
     private static String makePacket(String command, String data) {

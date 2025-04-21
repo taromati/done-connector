@@ -23,9 +23,10 @@ import org.java_websocket.protocols.Protocol;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
-public final class DoneConnector extends JavaPlugin implements Listener {
+public final class DoneConnector extends JavaPlugin implements Listener, DonationListener {
     public static Plugin plugin;
 
     public static boolean debug;
@@ -91,6 +92,54 @@ public final class DoneConnector extends JavaPlugin implements Listener {
         }
 
         logger.done("플러그인 비활성화 완료.");
+    }
+
+    @Override
+    public void onDonation(String platform, String streamerTag, String donorNickname, int amount, String message) {
+        logger.info(ChatColor.YELLOW + donorNickname + ChatColor.WHITE + "님께서 " + ChatColor.GREEN + amount + "원" + ChatColor.WHITE + "을 후원해주셨습니다.");
+
+        List<String> commands = null;
+
+        if (donationRewards.containsKey(amount)) {
+            commands = donationRewards.get(amount);
+        } else {
+            commands = donationRewards.get(0);
+        }
+
+        if (commands == null) {
+            return;
+        }
+
+        if (random) {
+            Random rand = new Random();
+            int randomIndex = rand.nextInt(commands.size());
+            String command = commands.get(randomIndex);
+            executeCommand(streamerTag, donorNickname, amount, message, command);
+        } else {
+            for (String command : commands) {
+                executeCommand(streamerTag, donorNickname, amount, message, command);
+            }
+        }
+    }
+
+    private void executeCommand(String tag, String nickname, int payAmount, String msg, String command) {
+        String[] commandArray = command.split(";");
+
+        for (String cmd : commandArray) {
+            String tempCommand = cmd;
+            tempCommand = tempCommand.replaceAll("%tag%", tag);
+            tempCommand = tempCommand.replaceAll("%name%", nickname);
+            tempCommand = tempCommand.replaceAll("%amount%", String.valueOf(payAmount));
+            tempCommand = tempCommand.replaceAll("%message%", msg);
+            String finalCommand = tempCommand;
+
+            try {
+                Bukkit.getScheduler()
+                        .callSyncMethod(plugin, () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand)).get();
+            } catch (InterruptedException | ExecutionException e) {
+                logger.error(e.toString());
+            }
+        }
     }
 
     private void clearConfig() {
@@ -256,7 +305,7 @@ public final class DoneConnector extends JavaPlugin implements Listener {
 
             logger.debug("액세스 토큰 조회 완료: " + accessToken + ", " + extraToken);
 
-            ChzzkWebSocket webSocket = new ChzzkWebSocket("wss://kr-ss1.chat.naver.com/chat", chatChannelId, accessToken, extraToken, chzzkUser, donationRewards, logger);
+            ChzzkWebSocket webSocket = new ChzzkWebSocket("wss://kr-ss1.chat.naver.com/chat", chatChannelId, accessToken, extraToken, chzzkUser, logger, this);
             webSocket.connect();
             chzzkWebSocketList.add(webSocket);
             return true;
@@ -290,7 +339,7 @@ public final class DoneConnector extends JavaPlugin implements Listener {
                     Collections.emptyList(),
                     Collections.singletonList(new Protocol("chat"))
             );
-            SoopWebSocket webSocket = new SoopWebSocket("wss://" + liveInfo.CHDOMAIN() + ":" + liveInfo.CHPT() + "/Websocket/" + liveInfo.BJID(), draft6455, liveInfo, soopUser, donationRewards, poong, logger);
+            SoopWebSocket webSocket = new SoopWebSocket("wss://" + liveInfo.CHDOMAIN() + ":" + liveInfo.CHPT() + "/Websocket/" + liveInfo.BJID(), draft6455, liveInfo, soopUser, poong, logger, this);
             webSocket.connect();
             soopWebSocketList.add(webSocket);
             return true;

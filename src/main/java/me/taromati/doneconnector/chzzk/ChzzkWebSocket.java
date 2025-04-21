@@ -1,10 +1,8 @@
 package me.taromati.doneconnector.chzzk;
 
 import lombok.Getter;
-import me.taromati.doneconnector.DoneConnector;
+import me.taromati.doneconnector.DonationListener;
 import me.taromati.doneconnector.logger.Logger;
-import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.json.simple.JSONArray;
@@ -13,7 +11,6 @@ import org.json.simple.parser.JSONParser;
 
 import java.net.URI;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 
 public class ChzzkWebSocket extends WebSocketClient {
     private final String chatChannelId;
@@ -21,8 +18,8 @@ public class ChzzkWebSocket extends WebSocketClient {
     private final String extraToken;
     @Getter
     private final Map<String, String> chzzkUser;
-    private final HashMap<Integer, List<String>> donationRewards;
     private final Logger logger;
+    private final DonationListener listener;
 
     private Thread pingThread;
 
@@ -40,7 +37,7 @@ public class ChzzkWebSocket extends WebSocketClient {
 
     private final JSONParser parser = new JSONParser();
 
-    public ChzzkWebSocket(String serverUri, String chatChannelId, String accessToken, String extraToken, Map<String, String> chzzkUser, HashMap<Integer, List<String>> donationRewards, Logger logger) {
+    public ChzzkWebSocket(String serverUri, String chatChannelId, String accessToken, String extraToken, Map<String, String> chzzkUser, Logger logger, DonationListener listener) {
         super(URI.create(serverUri));
         this.setConnectionLostTimeout(0);
 
@@ -48,8 +45,8 @@ public class ChzzkWebSocket extends WebSocketClient {
         this.accessToken = accessToken;
         this.extraToken = extraToken;
         this.chzzkUser = chzzkUser;
-        this.donationRewards = donationRewards;
         this.logger = logger;
+        this.listener = listener;
     }
 
     @Override
@@ -142,29 +139,9 @@ public class ChzzkWebSocket extends WebSocketClient {
             int payAmount = Integer.parseInt(extraObject.get("payAmount").toString());
 
             logger.debug("[ChzzkWebsocket][" + chzzkUser.get("nickname") + "] 파싱 완료");
-            logger.info(ChatColor.YELLOW + nickname + ChatColor.WHITE + "님께서 " + ChatColor.GREEN + payAmount + "원" + ChatColor.WHITE + "을 후원해주셨습니다.");
 
-            List<String> commands = null;
-
-            if (donationRewards.containsKey(payAmount)) {
-                commands = donationRewards.get(payAmount);
-            } else {
-                commands = donationRewards.get(0);
-            }
-
-            if (commands == null) {
-                return;
-            }
-
-            if (DoneConnector.random) {
-                Random rand = new Random();
-                int randomIndex = rand.nextInt(commands.size());
-                String command = commands.get(randomIndex);
-                call(chzzkUser.get("tag"), nickname, payAmount, msg, command);
-            } else {
-                for (String command : commands) {
-                    call(chzzkUser.get("tag"), nickname, payAmount, msg, command);
-                }
+            if (listener != null) {
+                listener.onDonation("Chzzk", chzzkUser.get("tag"), nickname, payAmount, msg);
             }
 
         } catch (Exception e) {
@@ -173,25 +150,6 @@ public class ChzzkWebSocket extends WebSocketClient {
         }
     }
 
-    private void call(String tag, String nickname, int payAmount, String msg, String command) {
-        String[] commandArray = command.split(";");
-
-        for (String cmd : commandArray) {
-            String tempCommand = cmd;
-            tempCommand = tempCommand.replaceAll("%tag%", tag);
-            tempCommand = tempCommand.replaceAll("%name%", nickname);
-            tempCommand = tempCommand.replaceAll("%amount%", String.valueOf(payAmount));
-            tempCommand = tempCommand.replaceAll("%message%", msg);
-            String finalCommand = tempCommand;
-
-            try {
-                Bukkit.getScheduler()
-                        .callSyncMethod(DoneConnector.plugin, () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), finalCommand)).get();
-            } catch (InterruptedException | ExecutionException e) {
-                logger.error(e.getMessage());
-            }
-        }
-    }
 
     @Override
     public void onClose(int code, String reason, boolean remote) {

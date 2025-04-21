@@ -14,8 +14,8 @@ Java 버전: 21 이상, 17
 ## **다운로드 방법**
 
 1. Github(https://github.com/taromati/done-connector) 의 Release 에서 다운로드
-    - [자바21버전](https://github.com/taromati/done-connector/releases/download/1.8.1/done-connector-1.8.2.jar)
-    - [자바17버전](https://github.com/taromati/done-connector/releases/download/1.8.1/done-connector-1.8.2-jdk17.jar)
+    - [자바21버전](https://github.com/taromati/done-connector/releases/download/1.8.2/done-connector-1.8.2.jar)
+    - [자바17버전](https://github.com/taromati/done-connector/releases/download/1.8.2/done-connector-1.8.2-jdk17.jar)
 ## **실행 방법**
 
 1. plugins 폴더에 done-connector-1.8.2.jar 파일을 넣고 마인크래프트 서버를 1회 실행 후 종료

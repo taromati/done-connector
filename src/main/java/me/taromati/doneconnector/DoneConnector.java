@@ -48,8 +48,6 @@ public final class DoneConnector extends JavaPlugin implements Listener, Donatio
         Objects.requireNonNull(this.getCommand("done")).setExecutor(this);
         Objects.requireNonNull(this.getCommand("done")).setTabCompleter(this);
 
-        logger = LoggerFactory.createBukkitLogger();
-
         try {
             loadConfig();
         } catch (Exception e) {
@@ -165,6 +163,8 @@ public final class DoneConnector extends JavaPlugin implements Listener, Donatio
         } catch (Exception e) {
             throw new DoneException(ExceptionCode.CONFIG_LOAD_ERROR);
         }
+
+        logger = LoggerFactory.createBukkitLogger(debug);
 
         try {
             logger.info("치지직 아이디 로드 중...");

@@ -1,10 +1,5 @@
 package me.taromati.doneconnector.logger;
 
-import me.taromati.doneconnector.DoneConnector;
-
-/**
- * Implementation of ILogger interface that uses System.out.println for logging.
- */
 public class SystemLogger implements Logger {
     private static final String PREFIX = "[TRMT] ";
     private static final String INFO_PREFIX = "[INFO] ";
@@ -12,6 +7,12 @@ public class SystemLogger implements Logger {
     private static final String ERROR_PREFIX = "[ERROR] ";
     private static final String WARN_PREFIX = "[WARN] ";
     private static final String DEBUG_PREFIX = "[DEBUG] ";
+
+    private final boolean enableDebug;
+
+    public SystemLogger(boolean enableDebug) {
+        this.enableDebug = enableDebug;
+    }
 
     @Override
     public void info(String msg) {
@@ -35,14 +36,8 @@ public class SystemLogger implements Logger {
 
     @Override
     public void debug(String msg) {
-        if (DoneConnector.debug) {
+        if (this.enableDebug) {
             System.out.println(PREFIX + DEBUG_PREFIX + msg);
         }
-    }
-
-    @Override
-    public void say(String msg) {
-        // In a non-Bukkit environment, just log the message
-        System.out.println(PREFIX + "[SAY] " + msg);
     }
 }

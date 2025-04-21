@@ -1,14 +1,15 @@
 package me.taromati.doneconnector.logger;
 
-import me.taromati.doneconnector.DoneConnector;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 
-/**
- * Implementation of ILogger interface that uses Bukkit's console sender for logging.
- */
 public class BukkitLogger implements Logger {
     private static final String prefix = ChatColor.AQUA + "[TRMT] ";
+    private final boolean enableDebug;
+
+    public BukkitLogger(boolean enableDebug) {
+        this.enableDebug = enableDebug;
+    }
 
     @Override
     public void info(String msg) {
@@ -48,20 +49,12 @@ public class BukkitLogger implements Logger {
 
     @Override
     public void debug(String msg) {
-        if (DoneConnector.debug) {
+        if (this.enableDebug) {
             try {
                 Bukkit.getConsoleSender().sendMessage(prefix + ChatColor.LIGHT_PURPLE + msg);
             } catch (Exception ignored) {
                 // Ignore exceptions
             }
         }
-    }
-
-    @Override
-    public void say(String msg) {
-        String command = "say " + msg;
-
-        Bukkit.getScheduler()
-                .callSyncMethod(DoneConnector.plugin, () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command));
     }
 }

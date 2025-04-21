@@ -34,10 +34,4 @@ public interface Logger {
      * @param msg The message to log
      */
     void debug(String msg);
-
-    /**
-     * Broadcast a message to all players.
-     * @param msg The message to broadcast
-     */
-    void say(String msg);
 }

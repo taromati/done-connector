@@ -1,10 +1,10 @@
 package me.taromati.doneconnector.logger;
 
 /**
- * Factory class for creating ILogger instances.
+ * Factory class for creating Logger instances.
  */
 public class LoggerFactory {
-    private static Logger defaultLogger = new BukkitLogger();
+    private static Logger defaultLogger = new SystemLogger(false);
 
     /**
      * Get the default logger.
@@ -26,15 +26,15 @@ public class LoggerFactory {
      * Create a new BukkitLogger.
      * @return A new BukkitLogger
      */
-    public static Logger createBukkitLogger() {
-        return new BukkitLogger();
+    public static Logger createBukkitLogger(boolean enableDebug) {
+        return new BukkitLogger(enableDebug);
     }
 
     /**
      * Create a new SystemLogger.
      * @return A new SystemLogger
      */
-    public static Logger createSystemLogger() {
-        return new SystemLogger();
+    public static Logger createSystemLogger(boolean enableDebug) {
+        return new SystemLogger(enableDebug);
     }
 }
